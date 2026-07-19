@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import StructuredData from '@/components/StructuredData'
 
 const faqs = [
   {
@@ -29,11 +30,25 @@ const faqs = [
   },
 ]
 
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.a,
+    },
+  })),
+}
+
 export default function FAQ() {
   const [open, setOpen] = useState<number | null>(null)
 
   return (
-    <section id="faq" className="py-24 px-6 border-t border-slate-800">
+    <section id="faq" className="py-24 px-6">
+      <StructuredData data={faqJsonLd} />
       <div className="max-w-6xl mx-auto">
         <h2 className="text-3xl font-bold text-white mb-2">常见问题</h2>
         <p className="text-slate-400 mb-12">
@@ -54,16 +69,20 @@ export default function FAQ() {
             <div key={i}>
               <button
                 onClick={() => setOpen(open === i ? null : i)}
+                aria-expanded={open === i}
+                aria-controls={`faq-answer-${i}`}
                 className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-900 transition-colors"
               >
                 <span className="text-white text-sm font-medium">{item.q}</span>
                 <span className="text-slate-500 text-xs ml-4 shrink-0">{open === i ? '-' : '+'}</span>
               </button>
-              {open === i && (
-                <div className="px-6 py-4 bg-slate-900/50 text-slate-400 text-sm leading-relaxed border-t border-slate-800">
-                  {item.a}
-                </div>
-              )}
+              <div
+                id={`faq-answer-${i}`}
+                hidden={open !== i}
+                className="px-6 py-4 bg-slate-900/50 text-slate-400 text-sm leading-relaxed border-t border-slate-800"
+              >
+                {item.a}
+              </div>
             </div>
           ))}
         </div>
