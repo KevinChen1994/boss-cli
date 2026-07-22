@@ -74,17 +74,30 @@ export function buildBlogPostingJsonLd(slug: string): Record<string, unknown> {
 
   return {
     '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    '@id': `${pageUrl}#article`,
-    headline: post.title,
-    description: post.description || post.title,
-    datePublished: post.date || undefined,
-    dateModified: post.date || undefined,
-    inLanguage: 'zh-CN',
-    url: pageUrl,
-    mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
-    author: { '@type': 'Organization', name: 'boss-cli' },
-    publisher: { '@type': 'Organization', name: 'boss-cli', url: SITE_URL },
+    '@graph': [
+      {
+        '@type': 'BlogPosting',
+        '@id': `${pageUrl}#article`,
+        headline: post.title,
+        description: post.description || post.title,
+        datePublished: post.date || undefined,
+        dateModified: post.date || undefined,
+        inLanguage: 'zh-CN',
+        url: pageUrl,
+        mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
+        author: { '@type': 'Organization', name: 'boss-cli', url: SITE_URL },
+        publisher: { '@type': 'Organization', name: 'boss-cli', url: SITE_URL },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: '首页', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: '博客', item: `${SITE_URL}/blog` },
+          { '@type': 'ListItem', position: 3, name: post.title, item: pageUrl },
+        ],
+      },
+    ],
   }
 }
 
