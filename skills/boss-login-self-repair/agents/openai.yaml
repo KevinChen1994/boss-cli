@@ -1,0 +1,4 @@
+interface:
+  display_name: "Boss Login Self-Repair"
+  short_description: "Sync upstream and repair Boss login on a clean branch"
+  default_prompt: "Use $boss-login-self-repair to synchronize official boss-cli source, repair the reproduced login failure on a dedicated branch, merge the verified result into main, update the installed CLI, and finish with a clean main worktree."
