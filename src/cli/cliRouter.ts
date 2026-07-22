@@ -7,6 +7,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { detachBrowserSession } from '../browser/index.js';
 import {
   implChatAction,
+  implDownloadResume,
   implLogin,
   implListCandidates,
   implListUnreadCandidates,
@@ -156,6 +157,9 @@ function printHelp(): void {
       操作: resume | not-fit | remark | agree-resume | request-attachment-resume | history | wechat
       request-attachment-resume：工具栏「求简历」，确认后向对方发送默认话术索要附件简历（需双方各至少发过一条消息）
       操作为 remark 时必须提供 --remark
+  boss download-resume --out <目录>
+      下载当前已打开候选人聊天中的最新附件简历；目录必须已存在且可写
+      下载成功后输出 BOSS 文件名、绝对路径和文件大小
   boss send [--text <内容>] [-t <内容>] [--request-resume]
       仅发送文本消息（等价于在当前会话输入框发送后回车）
       --request-resume：发送后延迟片刻自动执行「求简历」操作
@@ -469,6 +473,22 @@ export async function executeCommand(argv: string[]): Promise<string> {
       die('❌ 当操作为 remark 时，必须提供 --remark <备注内容>。');
     }
     return implChatAction({ action, remark });
+  }
+
+  if (cmd === 'download-resume') {
+    const { rest, flags, opts } = parseOpts(tail);
+    if (rest.length > 0 || flags.size > 0) {
+      die('❌ 用法: download-resume --out <目录>');
+    }
+    const unsupportedOpts = Object.keys(opts).filter((key) => key !== 'out');
+    if (unsupportedOpts.length > 0) {
+      die(`❌ download-resume 不支持参数: --${unsupportedOpts.join(', --')}`);
+    }
+    const outputDirectory = (opts.out ?? '').trim();
+    if (!outputDirectory) {
+      die('❌ 用法: download-resume --out <目录>');
+    }
+    return implDownloadResume(outputDirectory);
   }
 
   if (cmd === 'send') {

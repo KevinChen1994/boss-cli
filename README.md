@@ -69,6 +69,7 @@ boss help
 | `boss chat [姓名] --index <序号> [--unread] [--strict]` | 按 `boss list` 输出序号打开会话；同名候选人建议用序号 |
 | `boss send [--text <内容>]` | 向当前会话发送消息 |
 | `boss action <操作>` | 索要简历 / 不合适 / 备注 / 交换微信等 |
+| `boss download-resume --out <目录>` | 下载当前会话中的最新附件简历 |
 | `boss recommend [岗位关键字]` | 读取推荐候选人列表 |
 | `boss search [关键词]` | 常规搜索牛人列表 |
 | `boss greet <姓名> [--job <岗位>]` | 在当前推荐/深度搜索页对候选人打招呼（不会自动跳转） |
@@ -93,6 +94,8 @@ boss list --unread
 # 3. 打开会话并发送消息
 boss chat 张三
 boss send --text "您好，请问方便发一下简历吗？"
+mkdir -p ./resumes
+boss download-resume --out ./resumes
 
 # 同名或姓名定位失败时，按 list 序号打开；--unread 对应 list --unread 的序号
 boss chat --index 2 --unread
@@ -123,10 +126,11 @@ boss-cli 每条命令输出纯文本，适合 LLM 通过子进程编排：
 2. boss chat <姓名>       → 打开会话
    同名时用 boss chat [姓名] --index <序号> [--unread]
 3. boss action resume     → 索要简历
-4. boss send -t "..."     → 发送消息
-5. boss recommend         → 读取推荐列表
-6. boss search <关键词>   → 读取常规搜索列表
-7. boss greet <姓名>      → 批量打招呼
+4. boss download-resume --out <目录> → 下载当前会话的附件简历
+5. boss send -t "..."     → 发送消息
+6. boss recommend         → 读取推荐列表
+7. boss search <关键词>   → 读取常规搜索列表
+8. boss greet <姓名>      → 批量打招呼
 ```
 
 详见 [AGENTS.md](./AGENTS.md)。

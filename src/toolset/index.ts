@@ -14,6 +14,7 @@ import { runNormalSearch } from './normal-search.js';
 import { runRecommend } from './recommend.js';
 import { runPreview } from './preview.js';
 import { runRecommendGreet } from './greet.js';
+import { runDownloadAttachmentResume } from './download-resume.js';
 export type { ChatPageAction };
 export type { DeepSearchGeekItem } from './deep-search.js';
 
@@ -57,6 +58,13 @@ export async function implChatAction(params: {
   remark?: string;
 }): Promise<string> {
   return withBossSessionPage(async (page) => runChatActionOnCurrentConversation(page, params));
+}
+
+export async function implDownloadResume(outputDirectory: string): Promise<string> {
+  return withBossSessionPage(
+    async (page) => runDownloadAttachmentResume(page, outputDirectory),
+    { ensureChatShell: false },
+  );
 }
 
 export async function implSendMessage(params: {
