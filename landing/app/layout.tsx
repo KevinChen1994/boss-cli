@@ -3,12 +3,13 @@ import { SITE_URL } from '@/lib/site'
 import './globals.css'
 
 const siteUrl = SITE_URL
-const title = 'boss-cli — Boss直聘自动化招聘工具'
+const title = 'Boss直聘自动化工具：候选人管理与批量消息 | boss-cli'
 const description =
-  '专为 HR 和招聘团队打造的开源命令行工具。自动化候选人管理、批量发送消息、智能筛选简历，大幅提升招聘效率。支持 AI Agent 集成，一行命令搞定重复操作。'
+  'boss-cli 是面向 HR 和招聘团队的开源 Boss直聘自动化工具，支持候选人管理、批量消息、简历筛选与 AI Agent 集成，减少重复操作，提升招聘效率。'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: 'boss-cli',
   title: {
     default: title,
     template: '%s | boss-cli',
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
     locale: 'zh_CN',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title,
     description,
     creator: '@joohw',

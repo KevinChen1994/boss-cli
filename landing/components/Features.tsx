@@ -29,7 +29,7 @@ const features = [
 
 export default function Features() {
   return (
-    <section id="features" className="py-24 px-6 border-t border-slate-800">
+    <section id="features" className="py-24 px-6">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-3xl font-bold text-white mb-2">核心功能</h2>
         <p className="text-slate-400 mb-12">为 HR 和招聘团队精心打造，让招聘效率翻倍。</p>

@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar'
 import StructuredData from '@/components/StructuredData'
 import { blogBySlug, BLOG_POSTS, buildBlogPostingJsonLd, getBlogPost } from '@/lib/blog'
 import { renderMarkdown } from '@/lib/markdown'
-import { SITE_URL } from '@/lib/site'
+import { SITE_URL, SOCIAL_IMAGE } from '@/lib/site'
 
 type PageProps = {
   params: Promise<{ slug: string }>
@@ -36,11 +36,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: post.description || undefined,
       locale: 'zh_CN',
       publishedTime: post.date || undefined,
+      images: [SOCIAL_IMAGE],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: post.title,
       description: post.description || undefined,
+      images: [SOCIAL_IMAGE],
     },
   }
 }

@@ -4,10 +4,10 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-6">
       <div className="max-w-6xl mx-auto h-16 flex items-center justify-between">
-        <div>
+        <a href="/" aria-label="boss-cli 首页">
           <span className="text-teal-500 font-bold text-lg">boss</span>
           <span className="text-white font-bold text-lg">-cli</span>
-        </div>
+        </a>
 
         <nav className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-slate-400 hover:text-white text-sm transition-colors">功能</a>
