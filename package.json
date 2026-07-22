@@ -49,7 +49,8 @@
     "build": "tsc",
     "dev": "npm run build && node dist/cli/index.js",
     "deploy": "node scripts/deploy.mjs",
-    "test:baidu": "node --env-file=.env scripts/test-baidu-ocr.mjs"
+    "test:baidu": "node --env-file=.env scripts/test-baidu-ocr.mjs",
+    "test:ocr-provider": "npm run build && node scripts/test-resume-ocr-provider.mjs"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

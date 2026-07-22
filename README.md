@@ -137,6 +137,30 @@ boss-cli 每条命令输出纯文本，适合 LLM 通过子进程编排：
 
 ---
 
+## 在线简历 OCR
+
+OCR 默认开启，必须通过 `BOSS_RESUME_OCR_PROVIDER` 明确选择服务商；未配置或填写其他值时命令会直接报错，不会自动回退。
+
+火山引擎：
+
+```dotenv
+BOSS_RESUME_OCR_PROVIDER=volcengine
+BOSS_VOLCENGINE_ACCESS_KEY=<access-key>
+BOSS_VOLCENGINE_SECRET_KEY=<secret-key>
+```
+
+百度：
+
+```dotenv
+BOSS_RESUME_OCR_PROVIDER=baidu
+BOSS_BAIDU_API_KEY=<api-key>
+BOSS_BAIDU_SECRET_KEY=<secret-key>
+```
+
+配置可以写入 `~/.boss-cli/.env`。不要把一个服务商的密钥映射成另一个服务商的变量；选择哪个 provider，就只调用对应服务商。
+
+---
+
 ## 常见问题
 
 **boss-cli 是什么？**
@@ -149,7 +173,7 @@ boss-cli 基于 CDP 连接本机 Chrome，复用已有登录态，针对 Boss直
 不需要。使用本机已安装的 Chrome / Chromium，通过 CDP 协议连接。
 
 **数据会上传到服务器吗？**
-不会。Cookie 和缓存仅存储在本地 `~/.boss-cli/`，CLI 不经过任何第三方服务器。
+Cookie 和浏览器缓存仅存储在本地 `~/.boss-cli/`，不会上传到 boss-cli 自有服务器。在线简历 OCR 开启时，简历截图会直接提交给 `BOSS_RESUME_OCR_PROVIDER` 指定的第三方 OCR 服务商。
 
 **如何无头模式运行？**
 设置环境变量 `BOSS_BROWSER_HEADLESS=true`（默认 headful，便于扫码登录）。
