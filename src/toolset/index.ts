@@ -1,6 +1,6 @@
 /** 业务实现聚合出口：impl* 供 CLI 与其它模块调用 */
 import { runLogin } from './login.js';
-import { runGetCandidateList } from './list.js';
+import { runGetCandidateList, type ChatListFilter } from './list.js';
 import { runListOpenPositions } from './jd.js';
 import { runOpenCandidateChat, runOpenCandidateChatByIndex } from './chat.js';
 import {
@@ -17,17 +17,14 @@ import { runRecommendGreet } from './greet.js';
 import { runDownloadAttachmentResume } from './download-resume.js';
 export type { ChatPageAction };
 export type { DeepSearchGeekItem } from './deep-search.js';
+export type { ChatListFilter } from './list.js';
 
 export async function implLogin(): Promise<string> {
   return runLogin();
 }
 
-export async function implListCandidates(): Promise<string> {
-  return runGetCandidateList();
-}
-
-export async function implListUnreadCandidates(): Promise<string> {
-  return runGetCandidateList({ unreadOnly: true });
+export async function implListCandidates(filter: ChatListFilter = 'all'): Promise<string> {
+  return runGetCandidateList({ filter });
 }
 
 export async function implOpenChat(
@@ -39,14 +36,14 @@ export async function implOpenChat(
 
 export async function implOpenChatByIndex(params: {
   index: number;
-  unreadOnly?: boolean;
+  filter?: ChatListFilter;
   expectedName?: string;
   exact?: boolean;
 }): Promise<string> {
   return withBossSessionPage(async (page) =>
     runOpenCandidateChatByIndex(page, {
       index: params.index,
-      filter: params.unreadOnly ? 'unread' : 'all',
+      filter: params.filter,
       expectedName: params.expectedName,
       exact: params.exact,
     }),

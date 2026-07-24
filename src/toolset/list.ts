@@ -17,6 +17,17 @@ type CandidateItem = {
   unreadCount: number;
 };
 
+export type ChatListFilter = 'all' | 'unread' | 'resume-acquired';
+
+const CHAT_LIST_FILTER_LABELS: Record<
+  ChatListFilter,
+  { stage: '全部' | '已获取简历'; message: '全部' | '未读' }
+> = {
+  all: { stage: '全部', message: '全部' },
+  unread: { stage: '全部', message: '未读' },
+  'resume-acquired': { stage: '已获取简历', message: '全部' },
+};
+
 async function waitForCandidateListSettled(
   page: Page,
   opts: { timeoutMs: number; pollMsMin: number; pollMsMax: number; minMsBeforeEmptyOk: number },
@@ -67,6 +78,40 @@ async function clickChatFilterTab(page: Page, label: string): Promise<void> {
   })()`);
 }
 
+async function ensureChatStageTabSelected(page: Page, label: string): Promise<void> {
+  const labelLiteral = JSON.stringify(label);
+  const selected = (await page.evaluate(`(() => {
+    const targetText = ${labelLiteral};
+    const norm = (v) => (v ?? "").replace(/\\s+/g, "").trim();
+    const tabs = Array.from(document.querySelectorAll(".chat-label .chat-label-item"));
+    const target = tabs.find((el) => norm(el.textContent) === targetText);
+    if (!target) {
+      const labels = tabs.map((el) => norm(el.textContent)).filter(Boolean).join(",");
+      throw new Error("未找到聊天阶段 Tab：" + targetText + "；当前 Tab：" + (labels || "空"));
+    }
+    if (target.classList.contains("selected")) return true;
+    if (!(target instanceof HTMLElement)) {
+      throw new Error("聊天阶段 Tab 不是可点击元素：" + targetText);
+    }
+    target.click();
+    return false;
+  })()`)) as boolean;
+
+  if (!selected) {
+    await sleepRandom(LIST_FILTER_GAP_MS.min, LIST_FILTER_GAP_MS.max);
+  }
+  await page.waitForFunction(
+    `(() => {
+      const targetText = ${labelLiteral};
+      const norm = (v) => (v ?? "").replace(/\\s+/g, "").trim();
+      const tabs = Array.from(document.querySelectorAll(".chat-label .chat-label-item"));
+      const target = tabs.find((el) => norm(el.textContent) === targetText);
+      return !!target && target.classList.contains("selected");
+    })()`,
+    { timeout: 8_000 },
+  );
+}
+
 async function waitForChatFilterTabSelected(page: Page, label: string): Promise<void> {
   const labelLiteral = JSON.stringify(label);
   await page.waitForFunction(
@@ -90,7 +135,7 @@ async function waitForChatFilterTabSelected(page: Page, label: string): Promise<
 
 export async function ensureChatListReady(
   page: Page,
-  filter: 'all' | 'unread' = 'all',
+  filter: ChatListFilter = 'all',
 ): Promise<void> {
   await ensurePage(page, {
     name: '沟通列表页',
@@ -108,10 +153,11 @@ export async function ensureChatListReady(
     { timeout: 15_000 },
   );
 
-  const filterLabel = filter === 'unread' ? '未读' : '全部';
-  await clickChatFilterTab(page, filterLabel);
+  const labels = CHAT_LIST_FILTER_LABELS[filter];
+  await ensureChatStageTabSelected(page, labels.stage);
+  await clickChatFilterTab(page, labels.message);
   await sleepRandom(LIST_FILTER_GAP_MS.min, LIST_FILTER_GAP_MS.max);
-  await waitForChatFilterTabSelected(page, filterLabel);
+  await waitForChatFilterTabSelected(page, labels.message);
   await waitForCandidateListSettled(page, {
     timeoutMs: 18_000,
     pollMsMin: LIST_POLL_MS.min,
@@ -121,13 +167,13 @@ export async function ensureChatListReady(
 }
 
 export async function runGetCandidateList(
-  opts: { unreadOnly?: boolean } = {},
+  opts: { filter?: ChatListFilter } = {},
 ): Promise<string> {
-  const unreadOnly = opts.unreadOnly === true;
+  const filter = opts.filter ?? 'all';
 
   try {
     return await withBossSessionPage(async (page) => {
-      await ensureChatListReady(page, unreadOnly ? 'unread' : 'all');
+      await ensureChatListReady(page, filter);
 
       const items = (await page.evaluate(
         `(() => {
@@ -150,8 +196,7 @@ export async function runGetCandidateList(
 
       const candidates = items.filter((it) => it.name) as CandidateItem[];
       const withUnread = candidates.filter((it) => it.unreadCount > 0).length;
-      const visible = unreadOnly ? candidates : candidates;
-      const lines = visible.map((it, idx) => {
+      const lines = candidates.map((it, idx) => {
         const base = `${idx + 1}. ${it.name}${it.job ? `｜${it.job}` : ''}`;
         const meta = [
           it.unreadCount > 0 ? `未读:${it.unreadCount}` : '',
@@ -166,9 +211,11 @@ export async function runGetCandidateList(
         lines.length > 0 ? `候选人明细：\n${lines.join('\n')}` : '候选人明细：暂无。';
 
       return [
-        unreadOnly
-          ? `未读筛选：共 ${visible.length} 人（已切换页面「未读」筛选）。`
-          : `沟通列表共 ${candidates.length} 人，其中 ${withUnread} 人有未读消息。`,
+        filter === 'unread'
+          ? `未读筛选：共 ${candidates.length} 人（已切换页面「全部」Tab 的「未读」筛选）。`
+          : filter === 'resume-acquired'
+            ? `已获取简历：共 ${candidates.length} 人，其中 ${withUnread} 人有未读消息。`
+            : `沟通列表共 ${candidates.length} 人，其中 ${withUnread} 人有未读消息。`,
         previewText,
       ]
         .filter(Boolean)

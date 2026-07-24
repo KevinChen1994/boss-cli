@@ -27,7 +27,7 @@ boss help
 | --- | --- |
 | Boss直聘批量发消息 | `boss send --text "..."` 配合脚本循环 |
 | Boss直聘自动打招呼 | `boss greet <姓名> [--job <岗位>]` |
-| Boss直聘候选人筛选 | `boss list` / `boss list --unread` |
+| Boss直聘候选人筛选 | `boss list` / `boss list --unread` / `boss list --filter resume-acquired` |
 | Boss直聘脚本自动化 | 本机 Chrome + CDP，Cookie 本地存储 |
 | AI 招聘 Agent | 子进程调用，输出 Agent 友好 |
 | 数据隐私 | 不经过第三方服务器，数据在 `~/.boss-cli/` |
@@ -64,9 +64,9 @@ boss help
 | --- | --- |
 | `boss login` | 打开 Boss直聘登录页（扫码/验证后手动完成） |
 | `boss update` | 通过 npm 安装最新版 boss-cli |
-| `boss list [--unread]` | 读取聊天列表；`--unread` 仅未读 |
+| `boss list [--unread] [--filter <all\|unread\|resume-acquired>]` | 读取聊天列表；`--unread` 与 `--filter` 互斥，`resume-acquired` 对应“已获取简历”Tab |
 | `boss chat <姓名> [--strict]` | 打开指定候选人会话 |
-| `boss chat [姓名] --index <序号> [--unread] [--strict]` | 按 `boss list` 输出序号打开会话；同名候选人建议用序号 |
+| `boss chat [姓名] --index <序号> [--unread] [--filter <all\|unread\|resume-acquired>] [--strict]` | 按相同筛选的 `boss list` 输出序号打开会话；`--unread` 与 `--filter` 互斥 |
 | `boss send [--text <内容>]` | 向当前会话发送消息 |
 | `boss action <操作>` | 索要简历 / 不合适 / 备注 / 交换微信等 |
 | `boss download-resume --out <目录>` | 下载当前会话中的最新附件简历 |
@@ -91,6 +91,9 @@ boss login
 # 2. 查看未读候选人
 boss list --unread
 
+# 查看“已获取简历”Tab 的全部候选人
+boss list --filter resume-acquired
+
 # 3. 打开会话并发送消息
 boss chat 张三
 boss send --text "您好，请问方便发一下简历吗？"
@@ -100,6 +103,7 @@ boss download-resume --out ./resumes
 # 同名或姓名定位失败时，按 list 序号打开；--unread 对应 list --unread 的序号
 boss chat --index 2 --unread
 boss chat 张三 --index 2 --unread --strict
+boss chat 张三 --index 2 --filter resume-acquired --strict
 
 # 4. 先进入推荐页，再在当前页打招呼
 boss recommend 前端工程师

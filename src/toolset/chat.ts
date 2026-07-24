@@ -7,7 +7,7 @@ import {
   sleepRandom,
 } from '../browser/index.js';
 import { isBossChatIndexUrl } from '../common/auth.js';
-import { ensureChatListReady } from './list.js';
+import { ensureChatListReady, type ChatListFilter } from './list.js';
 
 type ChatFrom = 'friend' | 'myself' | 'system' | 'unknown';
 
@@ -489,7 +489,7 @@ export async function runOpenCandidateChatByIndex(
   page: Page,
   params: {
     index: number;
-    filter?: 'all' | 'unread';
+    filter?: ChatListFilter;
     expectedName?: string;
     exact?: boolean;
   },
@@ -535,8 +535,10 @@ export async function runOpenCandidateChatByIndex(
   };
 
   if (!rowInfo.name) {
+    const filterLabel =
+      filter === 'resume-acquired' ? '已获取简历' : filter === 'unread' ? '未读' : '全部';
     throw new Error(
-      `聊天列表序号 ${params.index} 不存在；当前${filter === 'unread' ? '未读' : '全部'}列表共 ${rowInfo.total} 条。`,
+      `聊天列表序号 ${params.index} 不存在；当前${filterLabel}列表共 ${rowInfo.total} 条。`,
     );
   }
   if (expectedName) {

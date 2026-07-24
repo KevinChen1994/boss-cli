@@ -10,7 +10,6 @@ import {
   implDownloadResume,
   implLogin,
   implListCandidates,
-  implListUnreadCandidates,
   implOpenChatByIndex,
   implListPositions,
   implListPositionsWithOptions,
@@ -22,6 +21,7 @@ import {
   implSetBaiduCredentials,
   implBossSearch,
   implSendMessage,
+  type ChatListFilter,
   type ChatPageAction,
 } from '../toolset/index.js';
 import { printBossInteractiveBanner } from './banner.js';
@@ -144,12 +144,12 @@ function printHelp(): void {
       使用 npm 安装最新版 boss-cli
   boss login
       打开登录页（需要用户在浏览器中自行完成登录，这个命令会直接返回）
-  boss list [--unread]
-      读取「全部」聊天列表候选人；--unread 仅显示未读（角标>0）
+  boss list [--unread | --filter <all|unread|resume-acquired>]
+      读取聊天列表候选人；resume-acquired 对应页面「已获取简历」Tab
   boss chat <姓名> [--strict]
       打开指定联系人会话；默认包含匹配，--strict 为精确匹配
-  boss chat [姓名] --index <序号> [--unread] [--strict]
-      按 boss list 输出的 1-based 序号打开会话；--unread 表示序号对应 boss list --unread
+  boss chat [姓名] --index <序号> [--unread | --filter <all|unread|resume-acquired>] [--strict]
+      按相同筛选的 boss list 输出的 1-based 序号打开会话
       同时提供姓名时会校验该序号候选人姓名，--strict 表示精确校验
       仅用于已建立联系的候选人（即在 list 里可见的会话对象）
   boss action <操作> [--remark <备注>]
@@ -242,6 +242,33 @@ function splitRequirementArg(value: string): string[] {
     .split(/\r?\n|[;；]/)
     .map((x) => x.trim())
     .filter(Boolean);
+}
+
+function parseChatListFilter(raw: string, command: 'list' | 'chat'): ChatListFilter {
+  const value = raw.trim();
+  if (value === 'all' || value === 'unread' || value === 'resume-acquired') {
+    return value;
+  }
+  die(
+    `❌ ${command} --filter 仅支持 all、unread、resume-acquired，当前值: ${value || '空'}`,
+  );
+}
+
+function resolveChatListFilter(
+  command: 'list' | 'chat',
+  flags: Set<string>,
+  opts: Record<string, string>,
+): ChatListFilter {
+  if (flags.has('filter')) {
+    die(`❌ ${command} --filter 必须提供值: all、unread 或 resume-acquired`);
+  }
+  if (flags.has('unread') && opts.filter !== undefined) {
+    die(`❌ ${command} 不能同时使用 --unread 和 --filter`);
+  }
+  if (flags.has('unread')) {
+    return 'unread';
+  }
+  return opts.filter === undefined ? 'all' : parseChatListFilter(opts.filter, command);
 }
 
 function parseDeepSearchArgs(argv: string[]): {
@@ -404,11 +431,19 @@ export async function executeCommand(argv: string[]): Promise<string> {
   }
 
   if (cmd === 'list') {
-    const { flags } = parseOpts(tail);
-    if (flags.has('unread')) {
-      return implListUnreadCandidates();
+    const { rest, flags, opts } = parseOpts(tail);
+    if (rest.length > 0) {
+      die('❌ 用法: list [--unread | --filter <all|unread|resume-acquired>]');
     }
-    return implListCandidates();
+    const unsupportedFlags = [...flags].filter((key) => key !== 'unread' && key !== 'filter');
+    if (unsupportedFlags.length > 0) {
+      die(`❌ list 不支持参数: --${unsupportedFlags.join(', --')}`);
+    }
+    const unsupportedOpts = Object.keys(opts).filter((key) => key !== 'filter');
+    if (unsupportedOpts.length > 0) {
+      die(`❌ list 不支持参数: --${unsupportedOpts.join(', --')}`);
+    }
+    return implListCandidates(resolveChatListFilter('list', flags, opts));
   }
 
   if (cmd === 'chat') {
@@ -417,7 +452,12 @@ export async function executeCommand(argv: string[]): Promise<string> {
     if ((opts.action ?? '').trim().length > 0 || (opts.remark ?? '').trim().length > 0) {
       die('❌ chat 不再支持 --action/--remark。请改用: action <操作> [--remark <备注>]');
     }
-    const allowedOpts = new Set(['index', 'i', 'action', 'remark']);
+    const allowedFlags = new Set(['strict', 'unread', 'filter']);
+    const unsupportedFlags = [...flags].filter((key) => !allowedFlags.has(key));
+    if (unsupportedFlags.length > 0) {
+      die(`❌ chat 不支持参数: --${unsupportedFlags.join(', --')}`);
+    }
+    const allowedOpts = new Set(['index', 'i', 'action', 'remark', 'filter']);
     const unsupportedOpts = Object.keys(opts).filter((key) => !allowedOpts.has(key));
     if (unsupportedOpts.length > 0) {
       die(`❌ chat 不支持参数: --${unsupportedOpts.join(', --')}`);
@@ -432,16 +472,20 @@ export async function executeCommand(argv: string[]): Promise<string> {
       }
       return implOpenChatByIndex({
         index,
-        unreadOnly: flags.has('unread'),
+        filter: resolveChatListFilter('chat', flags, opts),
         expectedName: nameArg || undefined,
         exact,
       });
     }
-    if (flags.has('unread')) {
-      die('❌ chat 只有配合 --index 时才支持 --unread。用法: chat --index <序号> --unread');
+    if (flags.has('unread') || flags.has('filter') || opts.filter !== undefined) {
+      die(
+        '❌ chat 只有配合 --index 时才支持列表筛选。用法: chat --index <序号> [--unread | --filter <all|unread|resume-acquired>]',
+      );
     }
     if (!nameArg) {
-      die('❌ 用法: chat <姓名> [--strict]；或 chat [姓名] --index <序号> [--unread]');
+      die(
+        '❌ 用法: chat <姓名> [--strict]；或 chat [姓名] --index <序号> [--unread | --filter <all|unread|resume-acquired>]',
+      );
     }
     return implOpenChat(nameArg, exact);
   }
