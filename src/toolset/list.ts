@@ -10,6 +10,7 @@ import { ensurePage } from '../common/ensure_page.js';
 import { withBossSessionPage } from '../common/boss_session_page.js';
 
 type CandidateItem = {
+  bossGeekId: string;
   name: string;
   job: string;
   time: string;
@@ -17,16 +18,22 @@ type CandidateItem = {
   unreadCount: number;
 };
 
-export type ChatListFilter = 'all' | 'unread' | 'resume-acquired';
+export type ChatListFilter = 'all' | 'unread' | 'new-greeting-unread' | 'resume-acquired';
 
 const CHAT_LIST_FILTER_LABELS: Record<
   ChatListFilter,
-  { stage: '全部' | '已获取简历'; message: '全部' | '未读' }
+  { stage: '全部' | '新招呼' | '已获取简历'; message: '全部' | '未读' }
 > = {
   all: { stage: '全部', message: '全部' },
   unread: { stage: '全部', message: '未读' },
+  'new-greeting-unread': { stage: '新招呼', message: '未读' },
   'resume-acquired': { stage: '已获取简历', message: '全部' },
 };
+
+function parseBossGeekId(uniqueId: string): string {
+  const match = uniqueId.trim().match(/^([1-9]\d*)-\d+$/);
+  return match?.[1] ?? '';
+}
 
 async function waitForCandidateListSettled(
   page: Page,
@@ -179,6 +186,8 @@ export async function runGetCandidateList(
         `(() => {
           const norm = (v) => (v ?? "").replace(/\\s+/g, " ").trim();
           return Array.from(document.querySelectorAll(".geek-item")).map((el) => {
+            const uniqueId = el.getAttribute("data-id") ?? "";
+            const bossGeekId = (${parseBossGeekId.toString()})(uniqueId);
             const name = norm(el.querySelector(".geek-name")?.textContent);
             const job = norm(el.querySelector(".source-job")?.textContent);
             const time = norm(el.querySelector(".time")?.textContent);
@@ -189,7 +198,7 @@ export async function runGetCandidateList(
               const digits = norm(badge.textContent).replace(/\\D/g, "");
               if (digits) unreadCount = parseInt(digits, 10) || 0;
             }
-            return { name, job, time, message, unreadCount };
+            return { bossGeekId, name, job, time, message, unreadCount };
           });
         })()`,
       )) as CandidateItem[];
@@ -199,6 +208,7 @@ export async function runGetCandidateList(
       const lines = candidates.map((it, idx) => {
         const base = `${idx + 1}. ${it.name}${it.job ? `｜${it.job}` : ''}`;
         const meta = [
+          it.bossGeekId ? `BOSS_ID:${it.bossGeekId}` : 'BOSS_ID:缺失',
           it.unreadCount > 0 ? `未读:${it.unreadCount}` : '',
           it.time ? `时间:${it.time}` : '',
           it.message ? `消息:${it.message}` : '',
@@ -213,6 +223,8 @@ export async function runGetCandidateList(
       return [
         filter === 'unread'
           ? `未读筛选：共 ${candidates.length} 人（已切换页面「全部」Tab 的「未读」筛选）。`
+          : filter === 'new-greeting-unread'
+            ? `新招呼未读：共 ${candidates.length} 人（已切换页面「新招呼」Tab 的「未读」筛选）。`
           : filter === 'resume-acquired'
             ? `已获取简历：共 ${candidates.length} 人，其中 ${withUnread} 人有未读消息。`
             : `沟通列表共 ${candidates.length} 人，其中 ${withUnread} 人有未读消息。`,

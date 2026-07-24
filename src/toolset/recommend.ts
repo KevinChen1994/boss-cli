@@ -326,6 +326,7 @@ export function renderRecommendList(candidates: RecommendCandidate[]): string {
         m.advantage ||
         (m.highlights.length > 0 ? m.highlights.slice(0, 3).join(' / ') : '（无）');
       const fields = [
+        m.geekId ? `BOSS_ID:${m.geekId}` : 'BOSS_ID:缺失',
         m.salary ? `薪资:${m.salary}` : '',
         m.baseInfo ? `信息:${m.baseInfo}` : '',
         m.expect ? `期望:${m.expect}` : '',
@@ -415,7 +416,7 @@ export async function clickGreet(
       throw new Error(`候选人 ${result.name} 已打招呼。`);
     case 'clicked':
       return {
-        message: `已对 ${result.name} 点击“打招呼”。`,
+        message: `已对 ${result.name} 点击“打招呼”。BOSS_ID: ${result.geekId || '缺失'}`,
       };
     default: {
       const _x: never = result;
@@ -507,4 +508,3 @@ export async function runRecommend(jobKeyword?: string): Promise<string> {
     throw new Error(`读取推荐列表失败：${message}`);
   }
 }
-

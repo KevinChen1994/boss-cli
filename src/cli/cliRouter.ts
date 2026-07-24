@@ -144,11 +144,11 @@ function printHelp(): void {
       使用 npm 安装最新版 boss-cli
   boss login
       打开登录页（需要用户在浏览器中自行完成登录，这个命令会直接返回）
-  boss list [--unread | --filter <all|unread|resume-acquired>]
-      读取聊天列表候选人；resume-acquired 对应页面「已获取简历」Tab
+  boss list [--unread | --filter <all|unread|new-greeting-unread|resume-acquired>]
+      读取聊天列表候选人；new-greeting-unread 对应「新招呼」Tab 的「未读」筛选
   boss chat <姓名> [--strict]
       打开指定联系人会话；默认包含匹配，--strict 为精确匹配
-  boss chat [姓名] --index <序号> [--unread | --filter <all|unread|resume-acquired>] [--strict]
+  boss chat [姓名] --index <序号> [--unread | --filter <all|unread|new-greeting-unread|resume-acquired>] [--strict]
       按相同筛选的 boss list 输出的 1-based 序号打开会话
       同时提供姓名时会校验该序号候选人姓名，--strict 表示精确校验
       仅用于已建立联系的候选人（即在 list 里可见的会话对象）
@@ -246,11 +246,16 @@ function splitRequirementArg(value: string): string[] {
 
 function parseChatListFilter(raw: string, command: 'list' | 'chat'): ChatListFilter {
   const value = raw.trim();
-  if (value === 'all' || value === 'unread' || value === 'resume-acquired') {
+  if (
+    value === 'all' ||
+    value === 'unread' ||
+    value === 'new-greeting-unread' ||
+    value === 'resume-acquired'
+  ) {
     return value;
   }
   die(
-    `❌ ${command} --filter 仅支持 all、unread、resume-acquired，当前值: ${value || '空'}`,
+    `❌ ${command} --filter 仅支持 all、unread、new-greeting-unread、resume-acquired，当前值: ${value || '空'}`,
   );
 }
 
@@ -260,7 +265,7 @@ function resolveChatListFilter(
   opts: Record<string, string>,
 ): ChatListFilter {
   if (flags.has('filter')) {
-    die(`❌ ${command} --filter 必须提供值: all、unread 或 resume-acquired`);
+    die(`❌ ${command} --filter 必须提供值: all、unread、new-greeting-unread 或 resume-acquired`);
   }
   if (flags.has('unread') && opts.filter !== undefined) {
     die(`❌ ${command} 不能同时使用 --unread 和 --filter`);
@@ -402,6 +407,13 @@ export async function executeCommand(argv: string[]): Promise<string> {
   const tail = argv.slice(1);
   configureHeadlessForCommand(cmd);
 
+  if (
+    process.env.BOSS_AIHR_SOURCE_POLICY === 'strict' &&
+    (cmd === 'search' || cmd === 'deep-search' || cmd === 'deepsearch')
+  ) {
+    die('❌ AIHR 严格来源策略禁止常规搜索和深度搜索；只允许新招呼未读和推荐页。');
+  }
+
   if (cmd === '_baidu-keys') {
     const { rest, opts } = parseOpts(tail);
     let apiKey = (opts['api-key'] ?? opts.apikey ?? '').trim();
@@ -433,7 +445,7 @@ export async function executeCommand(argv: string[]): Promise<string> {
   if (cmd === 'list') {
     const { rest, flags, opts } = parseOpts(tail);
     if (rest.length > 0) {
-      die('❌ 用法: list [--unread | --filter <all|unread|resume-acquired>]');
+      die('❌ 用法: list [--unread | --filter <all|unread|new-greeting-unread|resume-acquired>]');
     }
     const unsupportedFlags = [...flags].filter((key) => key !== 'unread' && key !== 'filter');
     if (unsupportedFlags.length > 0) {
@@ -443,7 +455,11 @@ export async function executeCommand(argv: string[]): Promise<string> {
     if (unsupportedOpts.length > 0) {
       die(`❌ list 不支持参数: --${unsupportedOpts.join(', --')}`);
     }
-    return implListCandidates(resolveChatListFilter('list', flags, opts));
+    const filter = resolveChatListFilter('list', flags, opts);
+    if (process.env.BOSS_AIHR_SOURCE_POLICY === 'strict' && filter !== 'new-greeting-unread') {
+      die('❌ AIHR 严格来源策略只允许 list --filter new-greeting-unread。');
+    }
+    return implListCandidates(filter);
   }
 
   if (cmd === 'chat') {
@@ -470,22 +486,32 @@ export async function executeCommand(argv: string[]): Promise<string> {
       if (!Number.isInteger(index) || index < 1) {
         die(`❌ chat --index 必须是从 1 开始的整数，当前值: ${indexRaw}`);
       }
+      const filter = resolveChatListFilter('chat', flags, opts);
+      if (
+        process.env.BOSS_AIHR_SOURCE_POLICY === 'strict' &&
+        filter !== 'new-greeting-unread'
+      ) {
+        die('❌ AIHR 严格来源策略只允许从 new-greeting-unread 列表按序号打开聊天。');
+      }
       return implOpenChatByIndex({
         index,
-        filter: resolveChatListFilter('chat', flags, opts),
+        filter,
         expectedName: nameArg || undefined,
         exact,
       });
     }
     if (flags.has('unread') || flags.has('filter') || opts.filter !== undefined) {
       die(
-        '❌ chat 只有配合 --index 时才支持列表筛选。用法: chat --index <序号> [--unread | --filter <all|unread|resume-acquired>]',
+        '❌ chat 只有配合 --index 时才支持列表筛选。用法: chat --index <序号> [--unread | --filter <all|unread|new-greeting-unread|resume-acquired>]',
       );
     }
     if (!nameArg) {
       die(
-        '❌ 用法: chat <姓名> [--strict]；或 chat [姓名] --index <序号> [--unread | --filter <all|unread|resume-acquired>]',
+        '❌ 用法: chat <姓名> [--strict]；或 chat [姓名] --index <序号> [--unread | --filter <all|unread|new-greeting-unread|resume-acquired>]',
       );
+    }
+    if (process.env.BOSS_AIHR_SOURCE_POLICY === 'strict') {
+      die('❌ AIHR 严格来源策略禁止按姓名从全部列表打开聊天；必须使用 new-greeting-unread 的实时序号。');
     }
     return implOpenChat(nameArg, exact);
   }

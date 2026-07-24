@@ -23,6 +23,7 @@ import {
 import {
   clickGreet,
   assertRecommendPageReady,
+  isBossChatRecommendUrl,
   markGreetProduced,
   readRecommendList,
   renderRecommendList,
@@ -67,6 +68,12 @@ export async function runRecommendGreet(options: GreetOptions): Promise<string> 
     return await withBossSessionPage(async (page) => {
       await closeBossModalIfPresent(page);
       const url = page.url();
+      if (
+        process.env.BOSS_AIHR_SOURCE_POLICY === 'strict' &&
+        !isBossChatRecommendUrl(url)
+      ) {
+        throw new Error('AIHR 严格来源策略只允许从推荐页打招呼。');
+      }
       if (isBossChatAiFormUrl(url)) {
         await ensureInDeepSearchPage(page);
         let jobLine = '';

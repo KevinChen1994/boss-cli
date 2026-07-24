@@ -47,6 +47,12 @@ export async function runPreview(options: PreviewOptions): Promise<string> {
   try {
     return await withBossSessionPage(async (page) => {
       const url = page.url();
+      if (
+        process.env.BOSS_AIHR_SOURCE_POLICY === 'strict' &&
+        !isBossChatRecommendUrl(url)
+      ) {
+        throw new Error('AIHR 严格来源策略只允许从推荐页预览候选人。');
+      }
       let jobLine: string;
       let savedOriginal: Awaited<ReturnType<typeof snapshotBossPageViewport>>;
       let opened: boolean;

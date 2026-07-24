@@ -11,6 +11,15 @@ import { ensureChatListReady, type ChatListFilter } from './list.js';
 
 type ChatFrom = 'friend' | 'myself' | 'system' | 'unknown';
 
+async function readSelectedBossGeekId(page: Page): Promise<string> {
+  return (await page.evaluate(`(() => {
+    const selected = document.querySelector(".geek-item.selected");
+    const uniqueId = selected?.getAttribute("data-id") ?? "";
+    const match = uniqueId.trim().match(/^([1-9]\\d*)-\\d+$/);
+    return match?.[1] ?? "";
+  })()`)) as string;
+}
+
 function chatRoleTag(from: ChatFrom): string {
   switch (from) {
     case 'friend':
@@ -435,6 +444,7 @@ async function scrapeCurrentChatMessages(page: Page): Promise<ChatMessageSnapsho
 
 async function renderOpenedCandidateChat(page: Page, foundName: string): Promise<string> {
   await waitForOpenedCandidateChat(page, foundName);
+  const bossGeekId = await readSelectedBossGeekId(page);
   const scraped = await scrapeCurrentChatMessages(page);
   const detailLines = scraped.messages.map((m) => {
     const tag = chatRoleTag(m.from);
@@ -447,6 +457,7 @@ async function renderOpenedCandidateChat(page: Page, foundName: string): Promise
 
   const out: string[] = [
     `成功进入候选人聊天：${foundName}`,
+    `BOSS_ID: ${bossGeekId || '缺失'}`,
     `简历获取状态: ${resumeStatus}`,
   ];
   const summaryLines: string[] = [];
@@ -536,7 +547,13 @@ export async function runOpenCandidateChatByIndex(
 
   if (!rowInfo.name) {
     const filterLabel =
-      filter === 'resume-acquired' ? '已获取简历' : filter === 'unread' ? '未读' : '全部';
+      filter === 'resume-acquired'
+        ? '已获取简历'
+        : filter === 'new-greeting-unread'
+          ? '新招呼未读'
+          : filter === 'unread'
+            ? '未读'
+            : '全部';
     throw new Error(
       `聊天列表序号 ${params.index} 不存在；当前${filterLabel}列表共 ${rowInfo.total} 条。`,
     );
@@ -839,10 +856,12 @@ export async function runOpenCandidateChat(
     });
 
     const resumeStatus = hasFriendResumeAttachment ? '已获取' : '未获取';
+    const bossGeekId = await readSelectedBossGeekId(page);
     const summary = await fetchCandidateSummary(page, foundName || targetName, exact);
 
     const out: string[] = [
       `成功进入候选人聊天：${foundName}`,
+      `BOSS_ID: ${bossGeekId || '缺失'}`,
       `简历获取状态: ${resumeStatus}`,
     ];
     const summaryLines: string[] = [];
